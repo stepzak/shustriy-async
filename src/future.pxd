@@ -4,3 +4,4 @@ cdef class Future:
     cdef list _cbs
     cdef set_result(self, object result)
     cdef _fire_callbacks(self)
+    cpdef object result(self)

@@ -7,7 +7,8 @@ cdef class Task(Future):
         self.coro = coro
         self._done = False
         self.loop = loop
-        self._step()
+        self._next_value = None
+        self.loop._schedule_task(self)
 
     cdef void _step(self, object value=None) except *:
         if self._done:
@@ -32,5 +33,6 @@ cdef class Task(Future):
         return self._done
 
     cdef _on_future_done(self, Future fut) except*:
-        self._step(fut.result())
+        self._next_value = fut.result()
+        self.loop._schedule_task(self)
 

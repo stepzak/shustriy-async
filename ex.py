@@ -1,8 +1,11 @@
+import time
+
 from src.event_loop import EventLoop
 
 def child():
     print("Дочерняя задача старт")
     yield loop.sleep(0.2)
+    print("Ух почти")
     print("Дочерняя задача завершена")
     return "наишустрейший цикл событий"
 
@@ -15,5 +18,8 @@ def parent():
 
 if __name__ == "__main__":
     loop = EventLoop()
+    n = time.perf_counter()
     loop.create_task(parent())
     loop.run()
+    n2 = time.perf_counter()
+    print((n2 - n) - 0.2)

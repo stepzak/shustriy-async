@@ -27,7 +27,7 @@ cdef class EventLoop:
         cdef Task task = Task(coro, self)
         return task
 
-    cdef void _schedule_task(self, Task task):
+    cpdef void _schedule_task(self, Task task):
         self._ready_queue.append(task)
 
     cdef Task _get_next_task(self):
@@ -84,7 +84,11 @@ cdef class EventLoop:
         while self._running:
             while self._ready_queue:
                 task = self._get_next_task()
-                if not task._done:
+                if task._next_value is not None:
+                    value = task._next_value
+                    task._next_value = None
+                    task._step(value)
+                else:
                     task._step()
 
             self._process_timers()

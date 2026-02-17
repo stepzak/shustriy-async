@@ -22,7 +22,7 @@ cdef class Future:
     def done(self):
         return self._done
 
-    def result(self):
+    cpdef object result(self):
         return self._result
 
     def add_done_callback(self, object callback):
