@@ -2,14 +2,15 @@ import socket
 from src.event_loop import EventLoop
 import httptools
 
-_BUFFER = bytearray(65536)
-_BUFFER_MV = memoryview(_BUFFER)
 
 def http_echo_server(loop):
     server = socket.socket()
     server.setblocking(False)
     server.bind(('localhost', 8080))
     server.listen(2048)
+    _BUFFER = bytearray(65536)
+    _BUFFER_MV = memoryview(_BUFFER)
+
 
     def handle_client(client):
         try:
@@ -20,6 +21,8 @@ def http_echo_server(loop):
             raw_request = _BUFFER[:n]
 
             body = raw_request
+            parser = httptools.HttpRequestParser(None)
+            parser.feed_data(body)
             response = (
                 b"HTTP/1.1 200 OK\r\n"
                 b"Content-Type: text/plain\r\n"

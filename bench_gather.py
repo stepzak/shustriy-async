@@ -1,9 +1,9 @@
-# benchmark.py
 import time
 import asyncio
 from src.event_loop import EventLoop
 
-# --- Ваш loop ---
+
+
 def make_my_task(delay, loop):
     def coro():
         yield loop.sleep(delay)
@@ -26,7 +26,6 @@ def benchmark_my_loop(num_tasks, delay):
     return end - start
 
 
-# --- Asyncio ---
 async def make_async_task(delay):
     await asyncio.sleep(delay)
     return 42
@@ -44,17 +43,14 @@ def run_asyncio(num_tasks, delay):
     return asyncio.run(benchmark_asyncio(num_tasks, delay))
 
 
-# --- Запуск ---
 if __name__ == "__main__":
-    num_tasks = 10_000_0
-    delay = 0.0001
+    num_tasks = 100000
+    delay = 0.1
 
     print("Запуск бенчмарка...")
 
-    # Ваш loop
     my_time = benchmark_my_loop(num_tasks, delay)
 
-    # Asyncio
     asyncio_time = run_asyncio(num_tasks, delay)
 
     print("\nРезультаты:")

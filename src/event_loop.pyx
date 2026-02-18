@@ -1,10 +1,11 @@
+import selectors
 from collections import deque
-from select import select
 
 from src.task cimport Task
 from src.future cimport Future
 import time
 import socket
+
 sock = socket.socket()
 sock.setblocking(False)
 
@@ -34,19 +35,17 @@ cdef class TimerEntry:
         self.future = future
 
 cdef class EventLoop:
-
     cdef object _ready_queue
     cdef list _timers
     cdef bint _running
-    cdef dict _sock_readers
-    cdef dict _sock_writers
+    cdef object _selector
+    cdef object _thread_pool
 
     def __init__(self):
         self._ready_queue = deque()
         self._timers = []
         self._running = False
-        self._sock_readers = {}
-        self._sock_writers = {}
+        self._selector = selectors.DefaultSelector()
 
     def create_task(self, object coro):
         cdef Task task = Task(coro, self)
@@ -69,18 +68,21 @@ cdef class EventLoop:
         return gather_fut
 
     cdef void _register_reader(self, object sock, Future fut):
-        self._sock_readers[sock] = fut
+        self._selector.register(sock, selectors.EVENT_READ, ("read", fut))
 
     cdef void _register_writer(self, object sock, Future fut):
-        self._sock_writers[sock] = fut
+        self._selector.register(sock, selectors.EVENT_WRITE, ("write", fut))
 
     cpdef void _schedule_task(self, Task task):
         self._ready_queue.append(task)
 
+    cdef void _unregister(self, object sock):
+        self._selector.unregister(sock)
+
     cdef Task _get_next_task(self):
         if not self._ready_queue:
             raise IndexError("empty queue")
-        return <Task>self._ready_queue.popleft()
+        return <Task> self._ready_queue.popleft()
 
     def sock_accept(self, object server_sock):
         cdef Future fut = Future()
@@ -168,8 +170,6 @@ cdef class EventLoop:
         cdef list ready_r, ready_w
         cdef object sock
         cdef Future fut
-        cdef list rlist
-        cdef list wlist
 
         while self._running:
             while self._ready_queue:
@@ -182,38 +182,35 @@ cdef class EventLoop:
                     task._step()
 
             self._process_timers()
+            if self._ready_queue:
+                continue
 
-            if not self._ready_queue and not self._timers and not self._sock_readers and not self._sock_writers:
+            if not self._ready_queue and not self._timers and len(self._selector.get_map()) == 0:
                 break
-            rlist = list(self._sock_readers.keys())
-            wlist = list(self._sock_writers.keys())
 
             timeout = self._get_timeout()
             if timeout < 0:
-                timeout = 0.0
-            if rlist and wlist:
-                timeout = None
+                timeout = 0
+            events = self._selector.select(timeout)
+            for key, mask in events:
+                sock = key.fileobj
+                kind, fut = key.data
+                self._selector.unregister(sock)
 
-            ready_r, ready_w, _ = select(rlist, wlist, [], timeout)
-            for sock in ready_r:
-                fut = self._sock_readers.pop(sock)
                 try:
-                    if hasattr(sock, 'accept'):
-                        client, addr = sock.accept()
-                        client.setblocking(False)
-                        fut.set_result((client, addr))
-                    else:
-                        data = sock.recv(65536)
-                        fut.set_result(data)
-                except BlockingIOError:
-                    self._register_reader(sock, fut)
-                except Exception as e:
-                    fut.set_exception(e)
-
-            for sock in ready_w:
-                fut = self._sock_writers.pop(sock)
-                try:
-                    fut.set_result(None)
+                    if mask & selectors.EVENT_READ:
+                        if hasattr(sock, 'accept'):
+                            client, addr = sock.accept()
+                            client.setblocking(False)
+                            fut.set_result((client, addr))
+                        else:
+                            data = sock.recv(65536)
+                            if not data:
+                                fut.set_exception(ConnectionResetError("Client disconnected"))
+                            else:
+                                fut.set_result(data)
+                    elif mask & selectors.EVENT_WRITE:
+                        fut.set_result(None)
                 except Exception as e:
                     fut.set_exception(e)
 
