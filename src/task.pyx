@@ -24,6 +24,11 @@ cdef class Task(Future):
             self._result = e.value if e.value is not None else None
             self._fire_callbacks()
 
+        except Exception as e:
+            self._done = True
+            self._exception = e
+            self._fire_callbacks()
+
     def result(self):
         if not self._done:
             raise RuntimeError("Fgdhfjgd fbhndj")
@@ -33,6 +38,11 @@ cdef class Task(Future):
         return self._done
 
     cdef _on_future_done(self, Future fut) except*:
-        self._next_value = fut.result()
-        self.loop._schedule_task(self)
+        try:
+            self._next_value = fut.result()
+            self.loop._schedule_task(self)
+        except Exception as e:
+            self._done = True
+            self._exception = e
+            self._fire_callbacks()
 

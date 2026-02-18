@@ -3,19 +3,26 @@ cdef class Future:
     def __init__(self):
         self._done = False
         self._result = None
+        self._exception = None
         self._cbs = []
 
-    cdef set_result(self, object result):
+    cdef void set_result(self, object result):
         if self._done:
-            return None
-
+            return
         self._result = result
         self._done = True
-        for cb in self._cbs:
-            cb(self)
-        return None
+        self._fire_callbacks()
 
-    cdef _fire_callbacks(self):
+    cdef void set_exception(self, object exception):
+        if self._done:
+            return
+        if not isinstance(exception, BaseException):
+            raise TypeError("Exception expected")
+        self._exception = exception
+        self._done = True
+        self._fire_callbacks()
+
+    cdef void _fire_callbacks(self):
         for cb in self._cbs:
             cb(self)
 
@@ -23,6 +30,10 @@ cdef class Future:
         return self._done
 
     cpdef object result(self):
+        if not self._done:
+            raise RuntimeError("Future not done")
+        if self._exception is not None:
+            raise self._exception
         return self._result
 
     def add_done_callback(self, object callback):
