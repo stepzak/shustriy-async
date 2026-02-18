@@ -1,25 +1,17 @@
-import time
-
 from src.event_loop import EventLoop
 
-def child():
-    print("Дочерняя задача старт")
+def task1():
     yield loop.sleep(0.2)
-    print("Ух почти")
-    print("Дочерняя задача завершена")
-    return "наишустрейший цикл событий"
+    return "A"
 
-def parent():
-    print("Родительская задача старт")
-    child_gen = child()
-    child_task = loop.create_task(child_gen)
-    result = yield child_task
-    print("Результат:", result)
+def task2():
+    yield loop.sleep(0.1)
+    return "B"
 
-if __name__ == "__main__":
-    loop = EventLoop()
-    n = time.perf_counter()
-    loop.create_task(parent())
-    loop.run()
-    n2 = time.perf_counter()
-    print((n2 - n) - 0.2)
+def main():
+    results = yield loop.gather(task1(), task2())
+    print("Результаты:", results)
+
+loop = EventLoop()
+loop.create_task(main())
+loop.run()

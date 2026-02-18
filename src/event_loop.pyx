@@ -5,6 +5,24 @@ from src.task cimport Task
 from src.future cimport Future
 import time
 
+cdef class _GatherState:
+    cdef int total
+    cdef int completed
+    cdef list results
+    cdef Future gather_fut
+
+    def __init__(self, int total, Future gather_fut):
+        self.total = total
+        self.completed = 0
+        self.results = [None] * total
+        self.gather_fut = gather_fut
+
+    def on_task_done(self, int index, Task task):
+        self.results[index] = task.result()
+        self.completed += 1
+        if self.completed == self.total:
+            self.gather_fut.set_result(self.results)
+
 cdef class TimerEntry:
     cdef double when
     cdef Future future
@@ -26,6 +44,22 @@ cdef class EventLoop:
     def create_task(self, object coro):
         cdef Task task = Task(coro, self)
         return task
+
+    def gather(self, *coros):
+        if not coros:
+            fut = Future()
+            fut.set_result([])
+            return fut
+
+        cdef int total = len(coros)
+        cdef Future gather_fut = Future()
+        cdef _GatherState state = _GatherState(total, gather_fut)
+
+        for i, coro in enumerate(coros):
+            task = self.create_task(coro)
+            task.add_done_callback(lambda t, idx=i, st=state: st.on_task_done(idx, t))
+
+        return gather_fut
 
     cpdef void _schedule_task(self, Task task):
         self._ready_queue.append(task)
