@@ -1,7 +1,11 @@
 import socket
 from src.event_loop import EventLoop
+import httptools
 
-def echo_server(loop):
+_BUFFER = bytearray(65536)
+_BUFFER_MV = memoryview(_BUFFER)
+
+def http_echo_server(loop):
     server = socket.socket()
     server.setblocking(False)
     server.bind(('localhost', 8080))
@@ -9,35 +13,38 @@ def echo_server(loop):
 
     def handle_client(client):
         try:
-            while True:
-                data = yield loop.sock_recv(client, 1024)
-                if not data:
-                    break
-                yield loop.sock_send(client, data)
-        except OSError as e:
-            print(f"Disconnect: {e}")
-        except Exception as e:
-            print(e)
+            n = yield loop.sock_recv_static(client, _BUFFER_MV)
+            if n <= 0:
+                return
+
+            raw_request = _BUFFER[:n]
+
+            body = raw_request
+            response = (
+                b"HTTP/1.1 200 OK\r\n"
+                b"Content-Type: text/plain\r\n"
+                b"Connection: close\r\n"
+                b"Content-Length: " + str(len(body)).encode() + b"\r\n"
+                b"\r\n"
+                + body
+            )
+            yield loop.sock_send(client, response)
+        except Exception:
+            pass
         finally:
             client.close()
+
     def accept_loop():
-        print("Accept loop")
         while True:
             try:
                 client, addr = yield loop.sock_accept(server)
-                print(f"New connect: {addr}")
                 loop.create_task(handle_client(client))
-            except OSError as e:
-                print(f"Connecttion error: {e}")
-                continue
-
-            except Exception as e:
-                print(e)
-                break
+            except Exception:
+                pass
 
     loop.create_task(accept_loop())
     loop.run()
 
 if __name__ == '__main__':
     loop = EventLoop()
-    echo_server(loop)
+    http_echo_server(loop)

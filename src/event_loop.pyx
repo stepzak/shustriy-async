@@ -110,6 +110,15 @@ cdef class EventLoop:
             self._register_reader(sock, fut)
         return fut
 
+    def sock_recv_static(self, object sock, object buffer_view):
+        cdef Future fut = Future()
+        try:
+            n = sock.recv_into(buffer_view)
+            fut.set_result(n)
+        except BlockingIOError:
+            self._register_reader(sock, fut)
+        return fut
+
     def sleep(self, double delay):
         cdef double when = time.time() + delay
         cdef Future fut = Future()

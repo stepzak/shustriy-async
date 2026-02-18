@@ -3,9 +3,9 @@ import socket
 import time
 import threading
 
+
 def client_task(host, port, num_requests, results):
-    """Выполняет num_requests запросов и записывает время."""
-    times = []
+    """Выполняет num_requests запросов и записывает время успешных."""
     for _ in range(num_requests):
         start = time.perf_counter()
         try:
@@ -15,17 +15,17 @@ def client_task(host, port, num_requests, results):
             sock.recv(1024)
             sock.close()
             end = time.perf_counter()
-            times.append(end - start)
+            results.append(end - start)  # Только успешные запросы
         except Exception as e:
-            print(f"Ошибка: {e}")
-            return
-    results.extend(times)
+            # Игнорируем ошибку, но не прерываем поток
+            pass  # Можно логировать: print(f"Ошибка: {e}")
+
 
 def measure_rps(host='localhost', port=8080, total_requests=1000, concurrency=10):
-    """Замеряет RPS с заданной параллельностью."""
+    """Замеряет RPS по успешным запросам."""
     requests_per_client = total_requests // concurrency
     threads = []
-    results = []
+    results = []  # Список времени успешных запросов
 
     start_time = time.perf_counter()
 
@@ -42,15 +42,23 @@ def measure_rps(host='localhost', port=8080, total_requests=1000, concurrency=10
 
     end_time = time.perf_counter()
     total_time = end_time - start_time
-    rps = total_requests / total_time
+    successful_requests = len(results)
 
-    avg_latency = sum(results) / len(results) if results else 0
+    if successful_requests == 0:
+        print("Ни один запрос не удался!")
+        return
 
-    print(f"Запросов: {total_requests}")
+    rps = successful_requests / total_time
+    avg_latency = sum(results) / successful_requests
+
+    print(f"Всего попыток: {total_requests}")
+    print(f"Успешных запросов: {successful_requests}")
     print(f"Параллельность: {concurrency}")
     print(f"Общее время: {total_time:.2f} сек")
-    print(f"RPS: {rps:.2f}")
+    print(f"RPS (успешные): {rps:.2f}")
     print(f"Средняя задержка: {avg_latency * 1000:.2f} мс")
+    print(f"Процент успеха: {successful_requests / total_requests * 100:.1f}%")
+
 
 if __name__ == "__main__":
     measure_rps(total_requests=5000, concurrency=20)
