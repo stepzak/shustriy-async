@@ -180,7 +180,9 @@ cdef class EventLoop:
             wlist = list(self._sock_writers.keys())
 
             timeout = self._get_timeout()
-            if timeout < 0 and (rlist or wlist):
+            if timeout < 0:
+                timeout = 0.0
+            if rlist and wlist:
                 timeout = None
 
             ready_r, ready_w, _ = select(rlist, wlist, [], timeout)

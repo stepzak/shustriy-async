@@ -9,8 +9,8 @@ cdef class Future:
     cdef void set_result(self, object result):
         if self._done:
             return
-        self._result = result
         self._done = True
+        self._result = result
         self._fire_callbacks()
 
     cdef void set_exception(self, object exception):
@@ -18,8 +18,8 @@ cdef class Future:
             return
         if not isinstance(exception, BaseException):
             raise TypeError("Exception expected")
-        self._exception = exception
         self._done = True
+        self._exception = exception
         self._fire_callbacks()
 
     cdef void _fire_callbacks(self):

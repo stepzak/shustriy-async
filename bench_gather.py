@@ -47,7 +47,7 @@ def run_asyncio(num_tasks, delay):
 # --- Запуск ---
 if __name__ == "__main__":
     num_tasks = 10_000_0
-    delay = 0.001
+    delay = 0.0001
 
     print("Запуск бенчмарка...")
 

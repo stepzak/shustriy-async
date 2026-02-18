@@ -29,11 +29,6 @@ cdef class Task(Future):
             self._exception = e
             self._fire_callbacks()
 
-    def result(self):
-        if not self._done:
-            raise RuntimeError("Fgdhfjgd fbhndj")
-        return self._result
-
     def done(self):
         return self._done
 
