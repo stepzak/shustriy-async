@@ -6,11 +6,13 @@ cdef class Task(Future):
         Future.__init__(self)
         self.coro = coro
         self._done = False
+        self._result = None
+        self._exception = None
         self.loop = loop
-        self._next_value = None
-        self.loop._schedule_task(self)
+        self.next_value = None
+        self.loop.schedule_task(self)
 
-    cdef void _step(self, object value=None) except *:
+    cdef void step(self, object value=None) except *:
         if self._done:
             return
         try:
@@ -18,7 +20,7 @@ cdef class Task(Future):
             if isinstance(future, Future):
                 future.add_done_callback(self._on_future_done)
             else:
-                self._step(future)
+                self.step(future)
         except StopIteration as e:
             self._done = True
             self._result = e.value if e.value is not None else None
@@ -34,8 +36,8 @@ cdef class Task(Future):
 
     cdef _on_future_done(self, Future fut):
         try:
-            self._next_value = fut.result()
-            self.loop._schedule_task(self)
+            self.next_value = fut.result()
+            self.loop.schedule_task(self)
         except Exception as e:
             self._done = True
             self._exception = e

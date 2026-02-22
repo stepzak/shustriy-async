@@ -1,10 +1,13 @@
 import selectors
 from collections import deque
-
+import heapq
 from .task cimport Task
 from .future cimport Future
-import time
 import socket
+from cpython.time cimport PyTime_TimeRaw, PyTime_AsSecondsDouble
+
+cdef double monotonic_seconds():
+    return PyTime_AsSecondsDouble(PyTime_TimeRaw())
 
 sock = socket.socket()
 sock.setblocking(False)
@@ -28,11 +31,20 @@ cdef class _GatherState:
             self.gather_fut.set_result(self.results)
 
 cdef class TimerEntry:
-    cdef double when
-    cdef Future future
+    cdef public double when
+    cdef public Future future
     def __init__(self, double when, Future future):
         self.when = when
         self.future = future
+
+    def __richcmp__(self, other, int op):
+        if op == 0:
+            return self.when < other.when
+        elif op == 2:
+            return self.when == other.when
+        elif op == 4:
+            return self.when > other.when
+        return False
 
 cdef class EventLoop:
     cdef object _ready_queue
@@ -73,7 +85,7 @@ cdef class EventLoop:
     cdef void _register_writer(self, object sock, Future fut):
         self._selector.register(sock, selectors.EVENT_WRITE, ("write", fut))
 
-    cpdef void _schedule_task(self, Task task):
+    cpdef void schedule_task(self, Task task):
         self._ready_queue.append(task)
 
     cdef void _unregister(self, object sock):
@@ -122,39 +134,30 @@ cdef class EventLoop:
         return fut
 
     def sleep(self, double delay):
-        cdef double when = time.time() + delay
+        cdef double when = monotonic_seconds() + delay
         cdef Future fut = Future()
-        self._timers.append(TimerEntry(when, fut))
+        cdef TimerEntry entry = TimerEntry(when, fut)
+        heapq.heappush(self._timers, entry)
         return fut
 
     cdef void _process_timers(self):
         if not self._timers:
             return
-        cdef double now = time.time()
-        cdef list ready = []
-        cdef list remaining = []
+        cdef double now = monotonic_seconds()
         cdef TimerEntry entry
-        for entry in self._timers:
-            if entry.when <= now:
-                ready.append(entry)
-            else:
-                remaining.append(entry)
-        self._timers = remaining
-        for entry in ready:
+        while self._timers and self._timers[0].when <= now:
+            entry = heapq.heappop(self._timers)
             entry.future.set_result(None)
 
     cdef double _get_timeout(self):
         if not self._timers:
             return -1.0
 
-        cdef double now = time.time()
+        cdef double now = monotonic_seconds()
         cdef double m = -1
         cdef TimerEntry t_e
-        for t_e in self._timers:
-            if t_e.when < m or m == -1:
-                m = t_e.when
-
-        cdef double diff = m - now
+        cdef double next_time = self._timers[0].when
+        cdef double diff = next_time - now
         return diff if diff > 0.0 else 0.0
 
     def run_until_complete(self, object coro):
@@ -174,12 +177,12 @@ cdef class EventLoop:
         while self._running:
             while self._ready_queue:
                 task = self._get_next_task()
-                if task._next_value is not None:
-                    value = task._next_value
-                    task._next_value = None
-                    task._step(value)
+                if task.next_value is not None:
+                    value = task.next_value
+                    task.next_value = None
+                    task.step(value)
                 else:
-                    task._step()
+                    task.step()
 
             self._process_timers()
             if self._ready_queue:
