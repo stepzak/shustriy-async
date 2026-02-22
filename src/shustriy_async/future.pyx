@@ -6,14 +6,14 @@ cdef class Future:
         self._exception = None
         self._cbs = []
 
-    cdef void set_result(self, object result):
+    cpdef void set_result(self, object result):
         if self._done:
             return
         self._done = True
         self._result = result
         self._fire_callbacks()
 
-    cdef void set_exception(self, object exception):
+    cpdef void set_exception(self, object exception):
         if self._done:
             return
         if not isinstance(exception, BaseException):

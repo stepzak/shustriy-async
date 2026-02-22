@@ -1,11 +1,9 @@
-# rps_test.py
 import socket
 import time
 import threading
 
 
 def client_task(host, port, num_requests, results):
-    """Выполняет num_requests запросов и записывает время успешных."""
     for _ in range(num_requests):
         start = time.perf_counter()
         try:
@@ -15,17 +13,15 @@ def client_task(host, port, num_requests, results):
             sock.recv(1024)
             sock.close()
             end = time.perf_counter()
-            results.append(end - start)  # Только успешные запросы
+            results.append(end - start)
         except Exception as e:
-            # Игнорируем ошибку, но не прерываем поток
-            pass  # Можно логировать: print(f"Ошибка: {e}")
+            pass
 
 
 def measure_rps(host='localhost', port=8080, total_requests=1000, concurrency=10):
-    """Замеряет RPS по успешным запросам."""
     requests_per_client = total_requests // concurrency
     threads = []
-    results = []  # Список времени успешных запросов
+    results = []
 
     start_time = time.perf_counter()
 
