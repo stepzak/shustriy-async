@@ -1,6 +1,6 @@
 from collections import deque
 
-from src.future cimport Future
+from .future cimport Future
 
 cdef class Lock:
     cdef bint _locked

@@ -1,8 +1,8 @@
 import selectors
 from collections import deque
 
-from src.task cimport Task
-from src.future cimport Future
+from .task cimport Task
+from .future cimport Future
 import time
 import socket
 

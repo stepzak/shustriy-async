@@ -7,3 +7,4 @@ cdef class Future:
     cpdef void set_exception(self, object result)
     cdef void _fire_callbacks(self)
     cpdef object result(self)
+    cpdef void add_done_callback(self, object callback)
