@@ -32,7 +32,7 @@ cdef class Task(Future):
     def done(self):
         return self._done
 
-    cdef _on_future_done(self, Future fut) except*:
+    cdef _on_future_done(self, Future fut):
         try:
             self._next_value = fut.result()
             self.loop._schedule_task(self)
