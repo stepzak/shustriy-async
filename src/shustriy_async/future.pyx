@@ -36,7 +36,7 @@ cdef class Future:
             raise self._exception
         return self._result
 
-    def add_done_callback(self, object callback):
+    cpdef add_done_callback(self, object callback):
         if self._done:
             callback(self)
         else:
