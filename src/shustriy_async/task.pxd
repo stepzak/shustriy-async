@@ -1,4 +1,4 @@
-from src.future cimport Future
+from .future cimport Future
 
 cdef class Task(Future):
     cdef object coro
