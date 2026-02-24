@@ -23,6 +23,7 @@ def http_echo_server(loop):
             body = raw_request
             parser = httptools.HttpRequestParser(None)
             parser.feed_data(body)
+            print(body)
             response = (
                 b"HTTP/1.1 200 OK\r\n"
                 b"Content-Type: text/plain\r\n"
@@ -38,15 +39,18 @@ def http_echo_server(loop):
             client.close()
 
     def accept_loop():
+        print("Server started")
         while True:
             try:
                 client, addr = yield loop.sock_accept(server)
-                loop.create_task(handle_client(client))
+                yield loop.create_task(handle_client(client))
             except Exception:
                 pass
-
-    loop.create_task(accept_loop())
-    loop.run()
+    try:
+        loop.run_until_complete(accept_loop())
+    except Exception as ex:
+        print(ex)
+        server.shutdown(9)
 
 if __name__ == '__main__':
     loop = EventLoop()

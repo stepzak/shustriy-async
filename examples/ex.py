@@ -17,5 +17,4 @@ def main():
     print(results)
 
 loop = EventLoop()
-loop.create_task(main())
-loop.run()
+loop.run_until_complete(main())

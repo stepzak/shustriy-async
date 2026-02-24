@@ -4,6 +4,7 @@ lock = Lock()
 
 def task(loop: EventLoop):
     global a
+    print("Task started")
     yield lock.acquire()
     if a==1:
         yield loop.sleep(1)
@@ -12,9 +13,10 @@ def task(loop: EventLoop):
     yield lock.release()
     print("Lock released")
 
+def main(loop: EventLoop):
+    yield loop.gather(task(loop), task(loop))
+
 if __name__ == '__main__':
     loop = EventLoop()
-    t1 = loop.create_task(task(loop))
-    t2 = loop.create_task(task(loop))
-    loop.run()
+    loop.run_until_complete(main(loop))
     print(a)

@@ -2,7 +2,7 @@ from .future cimport Future
 
 cdef class Task(Future):
 
-    def __init__(self, object coro, object loop):
+    def __init__(self, object coro, object loop, bool schedule = False):
         Future.__init__(self)
         self.coro = coro
         self._done = False
@@ -10,7 +10,8 @@ cdef class Task(Future):
         self._exception = None
         self.loop = loop
         self.next_value = None
-        self.loop.schedule_task(self)
+        if schedule:
+            loop.schedule_task(self)
 
     cdef void step(self, object value=None) except *:
         if self._done:

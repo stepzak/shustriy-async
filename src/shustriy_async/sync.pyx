@@ -1,4 +1,5 @@
 from collections import deque
+from contextlib import contextmanager
 
 from .future cimport Future
 

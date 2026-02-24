@@ -59,8 +59,8 @@ cdef class EventLoop:
         self._running = False
         self._selector = selectors.DefaultSelector()
 
-    def create_task(self, object coro):
-        cdef Task task = Task(coro, self)
+    def create_task(self, object coro, bool schedule = False):
+        cdef Task task = Task(coro, self, schedule)
         return task
 
     def gather(self, *coros):
@@ -74,7 +74,7 @@ cdef class EventLoop:
         cdef _GatherState state = _GatherState(total, gather_fut)
 
         for i, coro in enumerate(coros):
-            task = self.create_task(coro)
+            task = self.create_task(coro, True)
             task.add_done_callback(lambda t, idx=i, st=state: st.on_task_done(idx, t))
 
         return gather_fut
@@ -161,7 +161,7 @@ cdef class EventLoop:
         return diff if diff > 0.0 else 0.0
 
     def run_until_complete(self, object coro):
-        self.create_task(coro)
+        self.create_task(coro, True)
         self._run()
 
     def run(self):
